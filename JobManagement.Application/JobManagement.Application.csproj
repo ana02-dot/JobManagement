@@ -10,4 +10,12 @@
       <ProjectReference Include="..\JobManagement.Domain\JobManagement.Domain.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="EntityFrameworkCore.SqlServer.HierarchyId" Version="4.0.0" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.8" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.8" />
+      <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="9.0.3" />
+      <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="9.0.3" />
+    </ItemGroup>
+
 </Project>
