@@ -7,11 +7,12 @@ public interface IUserRepository
     Task<User?> GetByIdAsync(int id);
     Task<User?> GetByEmailAsync(string email);
     Task<User?> GetByPersonalNumberAsync(string personalNumber);
-    Task<IEnumerable<User>> GetAllAsync();
+    Task<List<User>> GetAllAsync();
     Task<int> CreateAsync(User user);
     Task UpdateAsync(User user);
     Task DeleteAsync(int id);
     Task<bool> ExistsAsync(int id);
     Task<bool> EmailExistsAsync(string email);
     Task<bool> PersonalNumberExistsAsync(string personalNumber);
+    Task<bool> PhoneNumberExistsAsync(string phoneNumber);
 }
