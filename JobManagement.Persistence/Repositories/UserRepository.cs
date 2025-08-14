@@ -35,7 +35,7 @@ public class UserRepository : IUserRepository
             .FirstOrDefaultAsync(u => u.PersonalNumber == personalNumber);
     }
 
-    public async Task<IEnumerable<User>> GetAllAsync()
+    public async Task<List<User>> GetAllAsync()
     {
         return await _context.Users
             .Where(u => !u.IsDeleted)
@@ -85,5 +85,12 @@ public class UserRepository : IUserRepository
         return await _context.Users
             .Where(u => !u.IsDeleted)
             .AnyAsync(u => u.PersonalNumber == personalNumber);
+    }
+
+    public async Task<bool> PhoneNumberExistsAsync(string phoneNumber)
+    {
+        return await _context.Users
+            .Where(u => !u.IsDeleted)
+            .AnyAsync(u => u.PhoneNumber == phoneNumber);
     }
 }
