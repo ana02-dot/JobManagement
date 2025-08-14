@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
 using System.Text;
 using JobManagement.Application.Interfaces;
 using JobManagement.Domain.Entities;
@@ -8,14 +9,17 @@ namespace JobManagement.Application.Services;
 public class UserService
 {
     private readonly IUserRepository _userRepository;
-    private readonly IPersonalNumberVerificationService _personalNumberVerificationService;
+    private readonly IPhoneValidationService _phoneValidationService;
+    private readonly IJwtService _jwtService;
 
         public UserService(
-            IUserRepository userRepository,
-            IPersonalNumberVerificationService personalNumberVerificationService)
+            IUserRepository userRepository, 
+            IPhoneValidationService phoneValidationService,
+            IJwtService jwtService)
         {
             _userRepository = userRepository;
-            _personalNumberVerificationService = personalNumberVerificationService;
+            _phoneValidationService = phoneValidationService;
+            _jwtService = jwtService;
         }
 
         public async Task<User?> GetUserByIdAsync(int id)
@@ -33,30 +37,25 @@ public class UserService
             // Validate email uniqueness
             if (await _userRepository.EmailExistsAsync(user.Email))
             {
-                throw new InvalidOperationException("Email already exists");
+                throw new ValidationException("Email already exists");
             }
 
-            // Validate personal number uniqueness
-            if (await _userRepository.PersonalNumberExistsAsync(user.PersonalNumber))
+            // Validate phone number
+            if (!string.IsNullOrWhiteSpace(user.PhoneNumber))
             {
-                throw new InvalidOperationException("Personal number already exists");
+                var phoneValidationResult = await _phoneValidationService.ValidatePhoneAsync(user.PhoneNumber);
+                if (!phoneValidationResult.IsValid)
+                {
+                    throw new ValidationException($"Invalid phone number: {phoneValidationResult.ErrorMessage}");
+                }
             }
 
-            // Verify personal number with Georgian service
-            var verificationResult = await _personalNumberVerificationService
-                .VerifyPersonalNumberAsync(user.PersonalNumber);
-
-            if (!verificationResult.IsValid)
+            // Validate phone number uniqueness
+            if (!string.IsNullOrWhiteSpace(user.PhoneNumber) && await _userRepository.PhoneNumberExistsAsync(user.PhoneNumber))
             {
-                throw new InvalidOperationException($"Invalid personal number: {verificationResult.ErrorMessage}");
+                throw new ValidationException("Phone number already exists");
             }
-
-            // Set verified information from Georgian service
-            user.FirstName = verificationResult.FirstName ?? user.FirstName;
-            user.LastName = verificationResult.LastName ?? user.LastName;
-            user.IsPersonalNumberVerified = true;
-            user.PersonalNumberVerifiedAt = DateTime.UtcNow;
-
+            
             // Hash password
             user.PasswordHash = HashPassword(password);
             user.CreatedAt = DateTime.UtcNow;
@@ -64,12 +63,18 @@ public class UserService
             return await _userRepository.CreateAsync(user);
         }
 
-        public async Task<bool> ValidateUserCredentialsAsync(string email, string password)
+        public async Task<(bool IsValid, User? User)> ValidateUserCredentialsAsync(string email, string password)
         {
             var user = await _userRepository.GetByEmailAsync(email);
-            if (user == null) return false;
+            if (user == null) return (false, null);
 
-            return VerifyPassword(password, user.PasswordHash);
+            var isValid = VerifyPassword(password, user.PasswordHash);
+            return (isValid, isValid ? user : null);
+        }
+
+        public string GenerateJwtToken(User user)
+        {
+            return _jwtService.GenerateToken(user);
         }
 
         public async Task UpdateUserAsync(User user)
@@ -81,7 +86,7 @@ public class UserService
         private string HashPassword(string password)
         {
             using var sha256 = SHA256.Create();
-            var saltedPassword = password + "JobManagementSalt2024"; // In production, use a proper salt
+            var saltedPassword = password + "JobManagementSalt2024";
             var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(saltedPassword));
             return Convert.ToBase64String(hashedBytes);
         }
