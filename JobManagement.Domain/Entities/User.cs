@@ -18,7 +18,6 @@ public class User : BaseEntity
     public bool IsEmailVerified { get; set; }
     public DateTime? EmailVerifiedAt { get; set; }
 
-    public virtual ICollection<JobApplication> Applications { get; set; } = new List<JobApplication>();
     public virtual ICollection<Job> CreatedJobs { get; set; } = new List<Job>();
-    public virtual ICollection<JobApplication> ReviewedApplications { get; set; } = new List<JobApplication>();
+    public virtual ICollection<Applications> ReviewedApplications { get; set; } = new List<Applications>();
 }
