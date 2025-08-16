@@ -17,7 +17,7 @@ public class JobApplicationService
         _jobRepository = jobRepository;
     }
 
-    public async Task<int> SubmitApplicationAsync(JobApplication application, int applicantId)
+    public async Task<int> SubmitApplicationAsync(Applications application, int applicantId)
     {
         var job = await _jobRepository.GetByIdAsync(application.JobId);
         if (job == null)
@@ -65,24 +65,18 @@ public class JobApplicationService
             application.Status = status;
             application.ReviewedByUserId = reviewerId;
             application.ReviewedAt = DateTime.UtcNow;
-            application.ReviewNotes = reviewNotes;
             application.UpdatedAt = DateTime.UtcNow;
 
             await _jobApplicationRepository.UpdateAsync(application);
         }
 
-        public async Task<IEnumerable<JobApplication>> GetApplicationsByJobAsync(int jobId)
-        {
-            return await _jobApplicationRepository.GetByJobIdAsync(jobId);
-        }
+        public async Task<IEnumerable<Applications>> GetApplicationsByJobAsync(int jobId) =>
+            await _jobApplicationRepository.GetByJobIdAsync(jobId);
+        
+        public async Task<IEnumerable<Applications>> GetApplicationsByApplicantAsync(int applicantId) => 
+             await _jobApplicationRepository.GetByApplicantIdAsync(applicantId);
+        
 
-        public async Task<IEnumerable<JobApplication>> GetApplicationsByApplicantAsync(int applicantId)
-        {
-            return await _jobApplicationRepository.GetByApplicantIdAsync(applicantId);
-        }
-
-        public async Task<IEnumerable<JobApplication>> GetPendingApplicationsAsync()
-        {
-            return await _jobApplicationRepository.GetByStatusAsync(ApplicationStatus.Pending);
-        }
+        public async Task<IEnumerable<Applications>> GetPendingApplicationsAsync()  => 
+            await _jobApplicationRepository.GetByStatusAsync(ApplicationStatus.Pending); 
 }
