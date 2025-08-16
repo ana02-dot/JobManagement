@@ -19,9 +19,10 @@ public class JobService
             return await _jobRepository.GetByIdAsync(id);
         }
 
-        public async Task<IEnumerable<Job>> GetAllJobsAsync()
+        public async Task<List<Job>> GetAllJobsAsync()
         {
-            return await _jobRepository.GetAllAsync();
+            var returnedJobs =  await _jobRepository.GetAllAsync();
+            return returnedJobs.ToList();
         }
 
         public async Task<IEnumerable<Job>> GetActiveJobsAsync()
@@ -39,9 +40,8 @@ public class JobService
             if (creator.Role != UserRole.HR && creator.Role != UserRole.Admin)
                 throw new UnauthorizedAccessException("Only HR and Admin users can create jobs");
 
-            job.CreatedByUserId = creatorId;
             job.CreatedAt = DateTime.UtcNow;
-            job.Status = JobStatus.Draft;
+            job.Status = JobStatus.Active;
 
             return await _jobRepository.CreateAsync(job);
         }
@@ -56,9 +56,7 @@ public class JobService
             if (updater == null)
                 throw new InvalidOperationException("Updater not found");
 
-            // Only creator, HR, or Admin can update
-            if (existingJob.CreatedByUserId != updaterId && 
-                updater.Role != UserRole.Admin)
+            if (updater.Role != UserRole.Admin && updater.Role != UserRole.HR)
                 throw new UnauthorizedAccessException("Insufficient permissions to update job");
 
             job.UpdatedAt = DateTime.UtcNow;
@@ -77,7 +75,7 @@ public class JobService
             if (publisher == null)
                 throw new InvalidOperationException("Publisher not found");
 
-            if (job.CreatedByUserId != publisherId && publisher.Role != UserRole.Admin)
+            if (publisher.Role != UserRole.Admin && publisher.Role != UserRole.HR)
                 throw new UnauthorizedAccessException("Insufficient permissions to publish job");
 
             job.Status = JobStatus.Active;
