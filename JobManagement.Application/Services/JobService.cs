@@ -1,10 +1,12 @@
-﻿using JobManagement.Application.Interfaces;
+﻿using JobManagement.Application.Dtos;
+using JobManagement.Application.Interfaces;
 using JobManagement.Domain.Entities;
 using JobManagement.Domain.Enums;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace JobManagement.Application.Services;
 
-public class JobService
+public class JobService : IJobService
 {
     private readonly IJobRepository _jobRepository;
     private readonly IUserRepository _userRepository;
@@ -14,74 +16,62 @@ public class JobService
         _jobRepository = jobRepository;
         _userRepository = userRepository;
     }
-     public async Task<Job?> GetJobByIdAsync(int id)
+
+     public async Task<Job> CreateJobAsync(CreateJobRequest request, int createdBy)
+    {
+        // Validate creator
+        var creator = await _userRepository.GetByIdAsync(createdBy);
+        if (creator == null)
+            throw new InvalidOperationException("Creator not found");
+        
+        if (creator.Role != UserRole.HR && creator.Role != UserRole.Admin)
+            throw new UnauthorizedAccessException("Only HR and Admin users can create jobs");
+
+        var job = new Job
         {
-            return await _jobRepository.GetByIdAsync(id);
-        }
+            Title = request.Title,
+            Description = request.Description,
+            Requirements = request.Requirements,
+            Salary = request.Salary,
+            Location = request.Location,
+            ApplicationDeadline = request.ApplicationDeadline,
+            CreatedBy = createdBy,
+            CreatedAt = DateTime.UtcNow,
+            Status = JobStatus.Active
+        };
 
-        public async Task<List<Job>> GetAllJobsAsync()
-        {
-            var returnedJobs =  await _jobRepository.GetAllAsync();
-            return returnedJobs.ToList();
-        }
+        var createdJob = await _jobRepository.CreateAsync(job);
+        return createdJob;
+    }
 
-        public async Task<IEnumerable<Job>> GetActiveJobsAsync()
-        {
-            return await _jobRepository.GetByStatusAsync(JobStatus.Active);
-        }
+    public async Task<Job?> GetJobByIdAsync(int id) =>
+         await _jobRepository.GetByIdAsync(id);
 
-        public async Task<int> CreateJobAsync(Job job, int creatorId)
-        {
-            // Validate creator exists and has appropriate role
-            var creator = await _userRepository.GetByIdAsync(creatorId);
-            if (creator == null)
-                throw new InvalidOperationException("Creator not found");
+    public async Task<List<Job>> GetAllJobsAsync()
+    {
+        var returnedJobs = await _jobRepository.GetAllAsync();
+        return returnedJobs.ToList();
+    }
 
-            if (creator.Role != UserRole.HR && creator.Role != UserRole.Admin)
-                throw new UnauthorizedAccessException("Only HR and Admin users can create jobs");
+    public async Task<List<Job>> GetJobsByStatusAsync(JobStatus status) =>
+        await _jobRepository.GetByStatusAsync(status);
+    
+    public async Task UpdateJobAsync(Job job, int updaterId)
+    {
+        var existingJob = await _jobRepository.GetByIdAsync(job.Id);
+        if (existingJob == null)
+            throw new InvalidOperationException("Job not found");
 
-            job.CreatedAt = DateTime.UtcNow;
-            job.Status = JobStatus.Active;
+        var updater = await _userRepository.GetByIdAsync(updaterId);
+        if (updater == null)
+            throw new InvalidOperationException("Updater not found");
 
-            return await _jobRepository.CreateAsync(job);
-        }
+        if (updater.Role != UserRole.Admin && updater.Role != UserRole.HR)
+            throw new UnauthorizedAccessException("Insufficient permissions to update job");
 
-        public async Task UpdateJobAsync(Job job, int updaterId)
-        {
-            var existingJob = await _jobRepository.GetByIdAsync(job.Id);
-            if (existingJob == null)
-                throw new InvalidOperationException("Job not found");
+        job.UpdatedAt = DateTime.UtcNow;
+        job.UpdatedBy = updater.Email;
 
-            var updater = await _userRepository.GetByIdAsync(updaterId);
-            if (updater == null)
-                throw new InvalidOperationException("Updater not found");
-
-            if (updater.Role != UserRole.Admin && updater.Role != UserRole.HR)
-                throw new UnauthorizedAccessException("Insufficient permissions to update job");
-
-            job.UpdatedAt = DateTime.UtcNow;
-            job.UpdatedBy = updater.Email;
-
-            await _jobRepository.UpdateAsync(job);
-        }
-
-        public async Task PublishJobAsync(int jobId, int publisherId)
-        {
-            var job = await _jobRepository.GetByIdAsync(jobId);
-            if (job == null)
-                throw new InvalidOperationException("Job not found");
-
-            var publisher = await _userRepository.GetByIdAsync(publisherId);
-            if (publisher == null)
-                throw new InvalidOperationException("Publisher not found");
-
-            if (publisher.Role != UserRole.Admin && publisher.Role != UserRole.HR)
-                throw new UnauthorizedAccessException("Insufficient permissions to publish job");
-
-            job.Status = JobStatus.Active;
-            job.UpdatedAt = DateTime.UtcNow;
-            job.UpdatedBy = publisher.Email;
-
-            await _jobRepository.UpdateAsync(job);
-        }
+        await _jobRepository.UpdateAsync(job);
+    }
 }
