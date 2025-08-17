@@ -10,5 +10,5 @@ public abstract class BaseEntity
     public int CreatedBy { get; set; }
     public string? UpdatedBy { get; set; }
     public bool IsDeleted { get; set; }
-    public virtual User? Creator { get; set; }  // Navigation property
+    public virtual User? Creator { get; set; }
 }
