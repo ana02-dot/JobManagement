@@ -19,5 +19,6 @@ public class User : BaseEntity
     public DateTime? EmailVerifiedAt { get; set; }
 
     public virtual ICollection<Job> CreatedJobs { get; set; } = new List<Job>();
+    public virtual ICollection<Applications> Applications { get; set; } = new List<Applications>();
     public virtual ICollection<Applications> ReviewedApplications { get; set; } = new List<Applications>();
 }
