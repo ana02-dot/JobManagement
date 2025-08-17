@@ -13,6 +13,7 @@ public class Job : BaseEntity
     public JobStatus Status { get; set; } = JobStatus.Active;
     public DateTime ApplicationDeadline { get; set; }
     
-    public virtual User CreatedBy { get; set; } = null!;
+    
+    public virtual User? Creator { get; set; }
     public virtual ICollection<Applications> Applications { get; set; } = new List<Applications>();
 }
