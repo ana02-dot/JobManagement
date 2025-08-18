@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
+using JobManagement.Application.Dtos;
 
 namespace JobManagement.API.Controllers;
 
@@ -75,18 +77,18 @@ public class UserController : ControllerBase
                 Role = request.Role
             };
 
-            var userId = await _userService.CreateUserAsync(user, request.Password);
+            var createdUser = await _userService.CreateUserAsync(user, request.Password);
             
-            Log.Information("Successfully registered user {UserId} with email {Email}", userId, request.Email);
+            Log.Information("Successfully registered user {UserId} with email {Email}", createdUser.Id, request.Email);
             
             return Ok(new UserRegistrationResponse
             {
-                UserId = userId,
+                UserId = createdUser.Id,
                 Message = "User created successfully",
                 IsPhoneNumberVerified = true
             });
         }
-        catch (JobManagement.Infrastructure.Exceptions.ValidationException e)
+        catch (System.ComponentModel.DataAnnotations.ValidationException e)
         {
             Log.Warning("Validation error during user registration for email {Email}: {ErrorMessage}", request.Email, e.Message);
             return BadRequest(new { Message = e.Message });
@@ -142,41 +144,5 @@ public class UserController : ControllerBase
             Log.Error(ex, "Error during login for email: {Email}", request.Email);
             return BadRequest(new { Message = ex.Message });
         }
-    }
-
-    public class UserRegistrationRequest
-    {
-        public string PersonalNumber { get; set; } = string.Empty;
-        public string FirstName { get; set; } = string.Empty;
-        public string LastName { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public string PhoneNumber { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public UserRole Role { get; set; }
-    }
-
-    public class UserRegistrationResponse
-    {
-        public int UserId { get; set; }
-        public string Message { get; set; } = string.Empty;
-        public bool IsPhoneNumberVerified { get; set; }
-    }
-
-    public class LoginRequest
-    {
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-    }
-
-    public class LoginResponse
-    {
-        public int UserId { get; set; }
-        public string Email { get; set; } = string.Empty;
-        public string FirstName { get; set; } = string.Empty;
-        public string LastName { get; set; } = string.Empty;
-        public UserRole Role { get; set; }
-
-        public string Token { get; set; } = string.Empty;
-        public string Message { get; set; } = string.Empty;
     }
 }
