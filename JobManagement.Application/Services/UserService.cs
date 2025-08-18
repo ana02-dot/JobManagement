@@ -3,6 +3,8 @@ using System.Security.Cryptography;
 using System.Text;
 using JobManagement.Application.Interfaces;
 using JobManagement.Domain.Entities;
+using BCrypt.Net;
+
 
 namespace JobManagement.Application.Services;
 
@@ -22,17 +24,14 @@ public class UserService
             _jwtService = jwtService;
         }
 
-        public async Task<User?> GetUserByIdAsync(int id)
-        {
-            return await _userRepository.GetByIdAsync(id);
-        }
+        public async Task<User?> GetUserByIdAsync(int id) =>
+            await _userRepository.GetByIdAsync(id);
+        
+        public async Task<User?> GetUserByEmailAsync(string email) =>
+             await _userRepository.GetByEmailAsync(email);
+        
 
-        public async Task<User?> GetUserByEmailAsync(string email)
-        {
-            return await _userRepository.GetByEmailAsync(email);
-        }
-
-        public async Task<int> CreateUserAsync(User user, string password)
+        public async Task<User> CreateUserAsync(User user, string password)
         {
             // Validate email uniqueness
             if (await _userRepository.EmailExistsAsync(user.Email))
@@ -57,10 +56,13 @@ public class UserService
             }
             
             // Hash password
-            user.PasswordHash = HashPassword(password);
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
             user.CreatedAt = DateTime.UtcNow;
+            user.CreatedBy = user.Id;
 
-            return await _userRepository.CreateAsync(user);
+            var userId =  await _userRepository.CreateAsync(user);
+            user.Id = userId; // Set the ID from the repository
+            return user;
         }
 
         public async Task<(bool IsValid, User? User)> ValidateUserCredentialsAsync(string email, string password)
@@ -68,32 +70,16 @@ public class UserService
             var user = await _userRepository.GetByEmailAsync(email);
             if (user == null) return (false, null);
 
-            var isValid = VerifyPassword(password, user.PasswordHash);
+            var isValid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
             return (isValid, isValid ? user : null);
         }
 
-        public string GenerateJwtToken(User user)
-        {
-            return _jwtService.GenerateToken(user);
-        }
+        public string GenerateJwtToken(User user) =>
+            _jwtService.GenerateToken(user);
 
         public async Task UpdateUserAsync(User user)
         {
             user.UpdatedAt = DateTime.UtcNow;
             await _userRepository.UpdateAsync(user);
-        }
-
-        private string HashPassword(string password)
-        {
-            using var sha256 = SHA256.Create();
-            var saltedPassword = password + "JobManagementSalt2024";
-            var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(saltedPassword));
-            return Convert.ToBase64String(hashedBytes);
-        }
-
-        private bool VerifyPassword(string password, string storedHash)
-        {
-            var hashToVerify = HashPassword(password);
-            return hashToVerify == storedHash;
         }
 }
