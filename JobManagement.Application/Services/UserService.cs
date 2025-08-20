@@ -12,16 +12,13 @@ public class UserService
 {
     private readonly IUserRepository _userRepository;
     private readonly IPhoneValidationService _phoneValidationService;
-    private readonly IJwtService _jwtService;
 
         public UserService(
             IUserRepository userRepository, 
-            IPhoneValidationService phoneValidationService,
-            IJwtService jwtService)
+            IPhoneValidationService phoneValidationService)
         {
             _userRepository = userRepository;
             _phoneValidationService = phoneValidationService;
-            _jwtService = jwtService;
         }
 
         public async Task<User?> GetUserByIdAsync(int id) =>
@@ -30,6 +27,8 @@ public class UserService
         public async Task<User?> GetUserByEmailAsync(string email) =>
              await _userRepository.GetByEmailAsync(email);
         
+        public async Task<IEnumerable<User>> GetAllUsersAsync() =>
+            await _userRepository.GetAllAsync();
 
         public async Task<User> CreateUserAsync(User user, string password)
         {
@@ -58,7 +57,7 @@ public class UserService
             // Hash password
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
             user.CreatedAt = DateTime.UtcNow;
-            user.CreatedBy = user.Id;
+            //user.CreatedBy = user.Id;
 
             var userId =  await _userRepository.CreateAsync(user);
             user.Id = userId; // Set the ID from the repository
@@ -73,13 +72,71 @@ public class UserService
             var isValid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
             return (isValid, isValid ? user : null);
         }
-
-        public string GenerateJwtToken(User user) =>
-            _jwtService.GenerateToken(user);
-
-        public async Task UpdateUserAsync(User user)
+        
+        public async Task<User> UpdateUserAsync(User user)
         {
+            if (user == null)
+            {
+                throw new ArgumentNullException(nameof(user));
+            }
+            var existingUser = await _userRepository.GetByIdAsync(user.Id);
+            if (existingUser == null)
+            {
+                throw new ValidationException("User not found");
+            }
             user.UpdatedAt = DateTime.UtcNow;
             await _userRepository.UpdateAsync(user);
+            return user;
+        }
+        public async Task<bool> DeleteUserAsync(int id)
+        {
+            var user = await _userRepository.GetByIdAsync(id);
+            if (user == null)
+            {
+                return false;
+            }
+
+            await _userRepository.DeleteAsync(id);
+            return true;
+        }public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null) return false;
+
+            // Verify current password
+            if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
+            {
+                return false;
+            }
+
+            // Validate new password
+            if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+            {
+                throw new ValidationException("New password must be at least 6 characters long");
+            }
+
+            // Hash and update new password
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.UpdatedAt = DateTime.UtcNow;
+        
+            await _userRepository.UpdateAsync(user);
+            return true;
+        }
+
+        public async Task<bool> ResetPasswordAsync(string email, string newPassword)
+        {
+            var user = await _userRepository.GetByEmailAsync(email);
+            if (user == null) return false;
+
+            if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+            {
+                throw new ValidationException("Password must be at least 6 characters long");
+            }
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.UpdatedAt = DateTime.UtcNow;
+        
+            await _userRepository.UpdateAsync(user);
+            return true;
         }
 }
