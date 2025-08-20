@@ -1,10 +1,11 @@
-﻿using JobManagement.Application.Interfaces;
+﻿using JobManagement.Application.Dtos;
+using JobManagement.Application.Interfaces;
 using JobManagement.Domain.Entities;
 using JobManagement.Domain.Enums;
-using JobManagement.Infrastructure.Data;
+using JobManagement.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace JobManagement.Infrastructure.Repositories;
+namespace JobManagement.Persistence.Repositories;
 
 public class JobRepository : IJobRepository
 {
@@ -17,41 +18,32 @@ public class JobRepository : IJobRepository
     public async Task<Job?> GetByIdAsync(int id)
     {
         return await _context.Jobs
-            .Include(j => j.CreatedBy)
+            .Include(j => j.Creator)
             .Include(j => j.Applications)
             .Where(j => !j.IsDeleted)
             .FirstOrDefaultAsync(j => j.Id == id);
     }
 
-    public async Task<IEnumerable<Job>> GetAllAsync()
+    public async Task<List<Job>> GetAllAsync()
     {
         return await _context.Jobs
-            .Include(j => j.CreatedBy)
+            .Include(j => j.Creator)
             .Where(j => !j.IsDeleted)
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<Job>> GetByStatusAsync(JobStatus status)
+    public async Task<List<Job>> GetByStatusAsync(JobStatus status)
     {
         return await _context.Jobs
-            .Include(j => j.CreatedBy)
-            .Where(j => !j.IsDeleted && j.Status == status)
+            .Where(j => j.Status == status && !j.IsDeleted) 
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<Job>> GetByCreatorAsync(int creatorId)
-    {
-        return await _context.Jobs
-            .Include(j => j.CreatedBy)
-            .Where(j => !j.IsDeleted && j.CreatedByUserId == creatorId)
-            .ToListAsync();
-    }
-
-    public async Task<int> CreateAsync(Job job)
+    public async Task<Job> CreateAsync(Job job)
     {
         _context.Jobs.Add(job);
         await _context.SaveChangesAsync();
-        return job.Id;
+        return job;
     }
 
     public async Task UpdateAsync(Job job)
@@ -69,12 +61,5 @@ public class JobRepository : IJobRepository
             job.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
         }
-    }
-
-    public async Task<bool> ExistsAsync(int id)
-    {
-        return await _context.Jobs
-            .Where(j => !j.IsDeleted)
-            .AnyAsync(j => j.Id == id);
     }
 }
