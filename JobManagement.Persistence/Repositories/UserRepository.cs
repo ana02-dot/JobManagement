@@ -1,9 +1,9 @@
 ﻿using JobManagement.Application.Interfaces;
 using JobManagement.Domain.Entities;
-using JobManagement.Infrastructure.Data;
+using JobManagement.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace JobManagement.Infrastructure.Repositories;
+namespace JobManagement.Persistence.Repositories;
 
 public class UserRepository : IUserRepository
 {
