@@ -1,10 +1,10 @@
 ﻿using JobManagement.Application.Interfaces;
 using JobManagement.Domain.Entities;
 using JobManagement.Domain.Enums;
-using JobManagement.Infrastructure.Data;
+using JobManagement.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace JobManagement.Infrastructure.Repositories;
+namespace JobManagement.Persistence.Repositories;
 
 public class JobApplicationRepository : IJobApplicationRepository
 {
@@ -14,7 +14,7 @@ public class JobApplicationRepository : IJobApplicationRepository
     {
         _context = context;
     }
-    public async Task<JobApplication?> GetByIdAsync(int id)
+    public async Task<Applications?> GetByIdAsync(int id)
         {
             return await _context.JobApplications
                 .Include(ja => ja.Job)
@@ -24,7 +24,7 @@ public class JobApplicationRepository : IJobApplicationRepository
                 .FirstOrDefaultAsync(ja => ja.Id == id);
         }
 
-        public async Task<IEnumerable<JobApplication>> GetByJobIdAsync(int jobId)
+        public async Task<IEnumerable<Applications>> GetByJobIdAsync(int jobId)
         {
             return await _context.JobApplications
                 .Include(ja => ja.Applicant)
@@ -33,7 +33,7 @@ public class JobApplicationRepository : IJobApplicationRepository
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<JobApplication>> GetByApplicantIdAsync(int applicantId)
+        public async Task<IEnumerable<Applications>> GetByApplicantIdAsync(int applicantId)
         {
             return await _context.JobApplications
                 .Include(ja => ja.Job)
@@ -42,7 +42,7 @@ public class JobApplicationRepository : IJobApplicationRepository
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<JobApplication>> GetByStatusAsync(ApplicationStatus status)
+        public async Task<IEnumerable<Applications>> GetByStatusAsync(ApplicationStatus status)
         {
             return await _context.JobApplications
                 .Include(ja => ja.Job)
@@ -51,14 +51,14 @@ public class JobApplicationRepository : IJobApplicationRepository
                 .ToListAsync();
         }
 
-        public async Task<int> CreateAsync(JobApplication application)
+        public async Task<int> CreateAsync(Applications application)
         {
             _context.JobApplications.Add(application);
             await _context.SaveChangesAsync();
             return application.Id;
         }
 
-        public async Task UpdateAsync(JobApplication application)
+        public async Task UpdateAsync(Applications application)
         {
             _context.JobApplications.Update(application);
             await _context.SaveChangesAsync();
