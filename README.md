@@ -39,7 +39,7 @@ Ensure you have the .NET SDK installed on your system.
 Clone the Repository:
 
 -- git clone https://github.com/ana02-dot/JobManagement.git
--- cd JobManagement
+cd JobManagement
 
 # Configure Your Database:
 
@@ -62,7 +62,7 @@ dotnet ef database update
 
 # Run the API:
 
-dotnet run
+-- dotnet run
 
 The API should now be operational, typically accessible at https://localhost:7045 (the exact port will be displayed in your terminal output).
 
