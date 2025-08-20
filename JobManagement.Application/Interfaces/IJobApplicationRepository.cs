@@ -5,12 +5,12 @@ namespace JobManagement.Application.Interfaces;
 
 public interface IJobApplicationRepository
 {
-    Task<JobApplication?> GetByIdAsync(int id);
-    Task<IEnumerable<JobApplication>> GetByJobIdAsync(int jobId);
-    Task<IEnumerable<JobApplication>> GetByApplicantIdAsync(int applicantId);
-    Task<IEnumerable<JobApplication>> GetByStatusAsync(ApplicationStatus status);
-    Task<int> CreateAsync(JobApplication application);
-    Task UpdateAsync(JobApplication application);
+    Task<Applications?> GetByIdAsync(int id);
+    Task<IEnumerable<Applications>> GetByJobIdAsync(int jobId);
+    Task<IEnumerable<Applications>> GetByApplicantIdAsync(int applicantId);
+    Task<IEnumerable<Applications>> GetByStatusAsync(ApplicationStatus status);
+    Task<int> CreateAsync(Applications application);
+    Task UpdateAsync(Applications application);
     Task DeleteAsync(int id);
     Task<bool> HasUserAppliedAsync(int jobId, int userId);
 }

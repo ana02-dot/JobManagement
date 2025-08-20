@@ -1,4 +1,5 @@
 ﻿using JobManagement.Application.Services;
+using JobManagement.Application.Dtos;
 using JobManagement.Domain.Entities;
 using JobManagement.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
@@ -26,39 +27,38 @@ public class JobApplicationController : ControllerBase
     /// <returns>Application submission result</returns>
     /// <response code="200">Application submitted successfully</response>
     /// <response code="400">If the request data is invalid</response>
-    [HttpPost]
+    [HttpPost("submit")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(ApplicationSubmissionResponse), 200)]
     [ProducesResponseType(400)]
-            public async Task<ActionResult<ApplicationSubmissionResponse>> SubmitApplication([FromBody] ApplicationSubmissionRequest request)
+    public async Task<ActionResult<ApplicationSubmissionResponse>> SubmitApplication([FromBody] ApplicationSubmissionRequest request) 
+    {
+        Log.Information("Submitting application for job {JobId} by applicant {ApplicantId}", request.JobId, request.ApplicantId);
+
+        try
         {
-            Log.Information("Submitting application for job {JobId} by applicant {ApplicantId}", request.JobId, request.ApplicantId);
+            var application = new Applications
+            {
+                JobId = request.JobId,
+                Resume = request.Resume ?? string.Empty
+            };
+
+            var applicationId = await _jobApplicationService.SubmitApplicationAsync(application, request.ApplicantId);
             
-            try
-            {
-                var application = new JobApplication
-                {
-                    JobId = request.JobId,
-                    CoverLetter = request.CoverLetter,
-                    Resume = request.Resume
-                };
+            Log.Information("Successfully submitted application {ApplicationId} for job {JobId}", applicationId, request.JobId);
 
-                var applicationId = await _jobApplicationService.SubmitApplicationAsync(application, request.ApplicantId);
-                
-                Log.Information("Successfully submitted application {ApplicationId} for job {JobId}", applicationId, request.JobId);
-
-                return Ok(new ApplicationSubmissionResponse
-                {
-                    ApplicationId = applicationId,
-                    Message = "Application submitted successfully"
-                });
-            }
-            catch (Exception ex)
+            return Ok(new ApplicationSubmissionResponse
             {
-                Log.Error(ex, "Error submitting application for job {JobId} by applicant {ApplicantId}", request.JobId, request.ApplicantId);
-                return BadRequest(new { Message = ex.Message });
-            }
+                ApplicationId = applicationId,
+                Message = "Application submitted successfully"
+            });
         }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error submitting application for job {JobId} by applicant {ApplicantId}", request.JobId, request.ApplicantId);
+            return BadRequest(new { Message = ex.Message });
+        }
+    }
 
         /// <summary>
         /// Get all applications for a specific job
@@ -70,10 +70,10 @@ public class JobApplicationController : ControllerBase
         /// <response code="403">If the user does not have required role</response>
         [HttpGet("job/{jobId}")]
         [Authorize(Roles = "Manager,Admin")]
-        [ProducesResponseType(typeof(IEnumerable<JobApplication>), 200)]
+        [ProducesResponseType(typeof(List<Applications>), 200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<JobApplication>>> GetApplicationsByJob(int jobId)
+        public async Task<ActionResult<List<Applications>>> GetApplicationsByJob(int jobId)
         {
             Log.Information("Getting applications for job {JobId}", jobId);
             var applications = await _jobApplicationService.GetApplicationsByJobAsync(jobId);
@@ -91,10 +91,10 @@ public class JobApplicationController : ControllerBase
         /// <response code="403">If the user does not have required role</response>
         [HttpGet("applicant/{applicantId}")]
         [Authorize(Roles = "Manager,Admin")]
-        [ProducesResponseType(typeof(IEnumerable<JobApplication>), 200)]
+        [ProducesResponseType(typeof(List<Applications>), 200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<JobApplication>>> GetApplicationsByApplicant(int applicantId)
+        public async Task<ActionResult<List<Applications>>> GetApplicationsByApplicant(int applicantId)
         {
             Log.Information("Getting applications by applicant {ApplicantId}", applicantId);
             var applications = await _jobApplicationService.GetApplicationsByApplicantAsync(applicantId);
@@ -111,10 +111,10 @@ public class JobApplicationController : ControllerBase
         /// <response code="403">If the user does not have required role</response>
         [HttpGet("pending")]
         [Authorize(Roles = "Manager,Admin")]
-        [ProducesResponseType(typeof(IEnumerable<JobApplication>), 200)]
+        [ProducesResponseType(typeof(List<Applications>), 200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<JobApplication>>> GetPendingApplications()
+        public async Task<ActionResult<List<Applications>>> GetPendingApplications()
         {
             Log.Information("Getting pending applications");
             var applications = await _jobApplicationService.GetPendingApplicationsAsync();
@@ -122,7 +122,7 @@ public class JobApplicationController : ControllerBase
             return Ok(applications);
         }
 
-        /// <summary>
+        /*/// <summary>
         /// Review and update the status of a job application
         /// </summary>
         /// <param name="id">Application ID</param>
@@ -140,7 +140,7 @@ public class JobApplicationController : ControllerBase
         [ProducesResponseType(404)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult> ReviewApplication(int id, [FromBody] ReviewApplicationRequest request)
+        public async Task<ActionResult> ReviewApplication(int id, request.ReviewerId,request.Status, request.ReviewNotes)
         {
             Log.Information("Reviewing application {ApplicationId} by reviewer {ReviewerId} with status {Status}", id, request.ReviewerId, request.Status);
             
@@ -157,26 +157,5 @@ public class JobApplicationController : ControllerBase
                 Log.Error(ex, "Error reviewing application {ApplicationId}", id);
                 return BadRequest(new { Message = ex.Message });
             }
-        }
-
-    public class ApplicationSubmissionRequest
-    {
-        public int JobId { get; set; }
-        public int ApplicantId { get; set; } 
-        public string CoverLetter { get; set; } = string.Empty;
-        public string? Resume { get; set; }
-    }
-
-    public class ApplicationSubmissionResponse
-    {
-        public int ApplicationId { get; set; }
-        public string Message { get; set; } = string.Empty;
-    }
-    
-    public class ReviewApplicationRequest
-    {
-        public int ReviewerId { get; set; }
-        public ApplicationStatus Status { get; set; }
-        public string? ReviewNotes { get; set; }
-    }
+        }*/
 }
