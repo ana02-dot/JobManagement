@@ -15,154 +15,67 @@ namespace JobManagement.API.Controllers;
 [Produces("application/json")]
 public class AuthController : ControllerBase
 {
+    private readonly IJwtService _jwtService;
     private readonly UserService _userService;
 
-    public AuthController(UserService userService)
+    public AuthController(IJwtService jwtService, UserService userService)
     {
+        _jwtService = jwtService;
         _userService = userService;
-    }
-    [HttpPost("register")]
-    [AllowAnonymous]
-    [ProducesResponseType(typeof(AuthResponse), 200)]
-    [ProducesResponseType(400)]
-    public async Task<ActionResult<AuthResponse>> Register([FromBody] UserRegistrationRequest request)
-    {
-        try
-        {
-            Log.Information("User registration attempt for email: {Email}", request.Email);
-
-            var user = new User
-            {
-                PersonalNumber = request.PersonalNumber,
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                Email = request.Email,
-                PhoneNumber = request.PhoneNumber,
-                Role = request.Role,
-                IsPersonalNumberVerified = false,
-                IsEmailVerified = false
-            };
-
-            var createdUser = await _userService.CreateUserAsync(user, request.Password);
-            var token = _userService.GenerateJwtToken(createdUser);
-            var expiresAt = DateTime.UtcNow.AddMinutes(60);
-
-            Log.Information("User registered successfully: {Email}", request.Email);
-
-            return Ok(new AuthResponse
-            {
-                Token = token,
-                ExpiresAt = expiresAt,
-                User = new UserInfo
-                {
-                    Id = createdUser.Id,
-                    PersonalNumber = createdUser.PersonalNumber,
-                    FirstName = createdUser.FirstName,
-                    LastName = createdUser.LastName,
-                    Email = createdUser.Email,
-                    PhoneNumber = createdUser.PhoneNumber,
-                    Role = createdUser.Role,
-                    IsPersonalNumberVerified = createdUser.IsPersonalNumberVerified,
-                    IsEmailVerified = createdUser.IsEmailVerified,
-                    CreatedAt = createdUser.CreatedAt
-                }
-            });
-        }
-        catch (ValidationException ex)
-        {
-            Log.Warning("Registration validation failed for {Email}: {Message}", request.Email, ex.Message);
-            return BadRequest(new { Message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Unexpected error during registration for {Email}", request.Email);
-            return StatusCode(500, new { Message = "Registration failed. Please try again." });
-        }
     }
 
     [HttpPost("login")]
     [AllowAnonymous]
-    [ProducesResponseType(typeof(AuthResponse), 200)]
+    [ProducesResponseType(typeof(LoginResponse), 200)]
     [ProducesResponseType(401)]
-    public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
+    public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
     {
+        Log.Information("Login attempt for email: {Email}", request.Email);
+        
         try
         {
-            Log.Information("Login attempt for email: {Email}", request.Email);
-
             var (isValid, user) = await _userService.ValidateUserCredentialsAsync(request.Email, request.Password);
-            
             if (!isValid || user == null)
             {
-                Log.Warning("Invalid login attempt for email: {Email}", request.Email);
-                return Unauthorized(new { Message = "Invalid email or password" });
+                Log.Warning("Failed login attempt for email: {Email}", request.Email);
+                return Unauthorized(new { Message = "Invalid credentials" });
             }
 
-            var token = _userService.GenerateJwtToken(user);
-            var expiresAt = DateTime.UtcNow.AddMinutes(60);
+            var token = _jwtService.GenerateToken(user);
+        
+            return Ok(new { Token = token, User = user });
+            
+            Log.Information("Successful login for user {UserId} with email {Email}", user.Id, request.Email);
 
-            Log.Information("User logged in successfully: {Email}", request.Email);
-
-            return Ok(new AuthResponse
+            return Ok(new LoginResponse
             {
+                UserId = user.Id,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Role = user.Role,
                 Token = token,
-                ExpiresAt = expiresAt,
-                User = new UserInfo
-                {
-                    Id = user.Id,
-                    PersonalNumber = user.PersonalNumber,
-                    FirstName = user.FirstName,
-                    LastName = user.LastName,
-                    Email = user.Email,
-                    PhoneNumber = user.PhoneNumber,
-                    Role = user.Role,
-                    IsPersonalNumberVerified = user.IsPersonalNumberVerified,
-                    IsEmailVerified = user.IsEmailVerified,
-                    CreatedAt = user.CreatedAt
-                }
+                Message = "Login successful"
             });
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Unexpected error during login for {Email}", request.Email);
-            return StatusCode(500, new { Message = "Login failed. Please try again." });
+            Log.Error(ex, "Error during login for email: {Email}", request.Email);
+            return BadRequest(new { Message = ex.Message });
         }
     }
 
-    [HttpGet("profile")]
+    [HttpGet("protected")]
     [Authorize]
-    [ProducesResponseType(typeof(UserInfo), 200)]
-    [ProducesResponseType(401)]
-    public async Task<ActionResult<UserInfo>> GetProfile()
+    public IActionResult Protected()
     {
-        try
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-                return Unauthorized(new { Message = "Invalid token" });
+        return Ok(new { Message = "You are authenticated!", User = User.Identity.Name });
+    }
 
-            var user = await _userService.GetUserByIdAsync(userId);
-            if (user == null)
-                return NotFound(new { Message = "User not found" });
-
-            return Ok(new UserInfo
-            {
-                Id = user.Id,
-                PersonalNumber = user.PersonalNumber,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Email = user.Email,
-                PhoneNumber = user.PhoneNumber,
-                Role = user.Role,
-                IsPersonalNumberVerified = user.IsPersonalNumberVerified,
-                IsEmailVerified = user.IsEmailVerified,
-                CreatedAt = user.CreatedAt
-            });
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error getting user profile");
-            return StatusCode(500, new { Message = "Failed to retrieve profile" });
-        }
+    [HttpGet("admin-only")]
+    [Authorize(Roles = "Admin")]
+    public IActionResult AdminOnly()
+    {
+        return Ok(new { Message = "Admin access granted!" });
     }
 }
