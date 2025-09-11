@@ -9,20 +9,14 @@ public static class ModelBuilderExtensions
     {
         modelBuilder.Entity<T>(entity =>
         {
-            // Configure BaseEntity properties
+            // Configure ONLY BaseEntity properties - NO relationships
             entity.Property(e => e.Id).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.CreatedBy).IsRequired();
-            entity.Property(e => e.UpdatedAt).IsRequired(false);
+            entity.Property(e => e.UpdatedAt).IsRequired();
             entity.Property(e => e.UpdatedBy).HasMaxLength(200);
-            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
-
-            // Configure BaseEntity Creator relationship
-            entity.HasOne(e => e.Creator)
-                .WithMany()
-                .HasForeignKey(e => e.CreatedBy)
-                .OnDelete(DeleteBehavior.Restrict)
-                .IsRequired();
+            entity.Property(e => e.IsDeleted).HasDefaultValue(0);
+            
         });
     }
 }

@@ -20,7 +20,7 @@ public class JobRepository : IJobRepository
         return await _context.Jobs
             .Include(j => j.Creator)
             .Include(j => j.Applications)
-            .Where(j => !j.IsDeleted)
+            .Where(j => j.IsDeleted != 1)
             .FirstOrDefaultAsync(j => j.Id == id);
     }
 
@@ -28,14 +28,13 @@ public class JobRepository : IJobRepository
     {
         return await _context.Jobs
             .Include(j => j.Creator)
-            .Where(j => !j.IsDeleted)
             .ToListAsync();
     }
 
     public async Task<List<Job>> GetByStatusAsync(JobStatus status)
     {
         return await _context.Jobs
-            .Where(j => j.Status == status && !j.IsDeleted) 
+            .Where(j => j.Status == status && j.IsDeleted != 1) 
             .ToListAsync();
     }
 
@@ -57,7 +56,7 @@ public class JobRepository : IJobRepository
         var job = await GetByIdAsync(id);
         if (job != null)
         {
-            job.IsDeleted = true;
+            job.IsDeleted = 1;
             job.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
         }

@@ -17,36 +17,35 @@ public class UserRepository : IUserRepository
     public async Task<User?> GetByIdAsync(int id)
     {
         return await _context.Users
-            .Where(u => !u.IsDeleted)
+            .Where(u => u.IsDeleted == 0)
             .FirstOrDefaultAsync(u => u.Id == id);
     }
 
     public async Task<User?> GetByEmailAsync(string email)
     {
         return await _context.Users
-            .Where(u => !u.IsDeleted)
+            .Where(u => u.IsDeleted == 0)  
             .FirstOrDefaultAsync(u => u.Email == email);
     }
 
     public async Task<User?> GetByPersonalNumberAsync(string personalNumber)
     {
         return await _context.Users
-            .Where(u => !u.IsDeleted)
+            .Where(u => u.IsDeleted == 0)
             .FirstOrDefaultAsync(u => u.PersonalNumber == personalNumber);
     }
 
     public async Task<List<User>> GetAllAsync()
     {
         return await _context.Users
-            .Where(u => !u.IsDeleted)
             .ToListAsync();
     }
 
-    public async Task<int> CreateAsync(User user)
+    public async Task<User> CreateAsync(User user)
     {
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
-        return user.Id;
+        return user;
     }
 
     public async Task UpdateAsync(User user)
@@ -60,7 +59,7 @@ public class UserRepository : IUserRepository
         var user = await GetByIdAsync(id);
         if (user != null)
         {
-            user.IsDeleted = true;
+            user.IsDeleted = 1;
             user.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
         }
@@ -69,28 +68,25 @@ public class UserRepository : IUserRepository
     public async Task<bool> ExistsAsync(int id)
     {
         return await _context.Users
-            .Where(u => !u.IsDeleted)
+            .Where(u => u.IsDeleted != 1)
             .AnyAsync(u => u.Id == id);
     }
 
     public async Task<bool> EmailExistsAsync(string email)
     {
         return await _context.Users
-            .Where(u => !u.IsDeleted)
             .AnyAsync(u => u.Email == email);
     }
 
     public async Task<bool> PersonalNumberExistsAsync(string personalNumber)
     {
         return await _context.Users
-            .Where(u => !u.IsDeleted)
             .AnyAsync(u => u.PersonalNumber == personalNumber);
     }
 
     public async Task<bool> PhoneNumberExistsAsync(string phoneNumber)
     {
         return await _context.Users
-            .Where(u => !u.IsDeleted)
             .AnyAsync(u => u.PhoneNumber == phoneNumber);
     }
 }
