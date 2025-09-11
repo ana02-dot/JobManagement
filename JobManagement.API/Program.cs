@@ -10,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
 using FluentValidation.AspNetCore;
+using JobManagement.Application.Profiles;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,6 +23,7 @@ builder.Services.AddControllers();
 builder.Services.AddSwaggerConfiguration(builder.Configuration);
 builder.Services.AddValidationConfiguration();
 
+builder.Services.AddAutoMapper(typeof(UserProfile));
 // Bind JwtSettings from appsettings.json
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 // JWT Authentication Configuration
@@ -54,11 +56,12 @@ builder.Services.AddAuthentication(options =>
 // Database
         builder.Services.AddDbContext<JobManagementDbContext>(options =>
             options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
-                b => b.MigrationsAssembly("JobManagement.Persistence")
+            sqlOptions => sqlOptions.MigrationsAssembly("JobManagement.Persistence")
             ));
 
+
 // CORS
-        builder.Services.AddCors(options =>
+builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowAll", policy =>
             {
@@ -77,7 +80,6 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<JobService>();
 builder.Services.AddScoped<JobApplicationService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
-builder.Services.AddScoped<IPhoneValidationService, PhoneValidationService>();
 builder.Services.AddHttpClient<PhoneValidationService>();
 
 var app = builder.Build();
