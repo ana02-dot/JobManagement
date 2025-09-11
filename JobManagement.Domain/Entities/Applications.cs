@@ -13,7 +13,6 @@ public class Applications : BaseEntity
     public int? ReviewedByUserId { get; set; }
     public DateTime? ReviewedAt { get; set; }
         
-    
     public virtual Job Job { get; set; } = null!;
     public virtual User Applicant { get; set; } = null!;
     public virtual User? ReviewedBy { get; set; }
