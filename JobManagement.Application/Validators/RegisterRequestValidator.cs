@@ -42,8 +42,6 @@ public class RegisterRequestValidator : AbstractValidator<UserRegistrationReques
         RuleFor(u => u.PhoneNumber)
             .MaximumLength(50)
             .WithMessage("Phone number cannot exceed 50 characters")
-            .Matches(@"^(\+995|995|0)?[5-9]\d{8}$")
-            .WithMessage("Invalid Georgian phone number format")
             .When(x => !string.IsNullOrWhiteSpace(x.PhoneNumber));
 
         RuleFor(u => u.Password)
