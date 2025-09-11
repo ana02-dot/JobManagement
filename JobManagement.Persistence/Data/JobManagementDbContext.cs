@@ -117,13 +117,11 @@ public class JobManagementDbContext : DbContext
             entity.HasIndex(e => new { e.JobId, e.ApplicantId }).IsUnique();
         });
 
-        // ===== CONFIGURE ALL FOREIGN KEYS MANUALLY =====
-        // 1. User.Creator -> User (Self-reference)
         modelBuilder.Entity<User>()
             .HasOne(u => u.Creator)
             .WithMany()
             .HasForeignKey(u => u.CreatedBy)
             .OnDelete(DeleteBehavior.NoAction)
-            .IsRequired(false); // Make optional
+            .IsRequired(false);
     }
 }
