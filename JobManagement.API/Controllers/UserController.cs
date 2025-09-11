@@ -1,12 +1,10 @@
-﻿using JobManagement.Application.Services;
+﻿using System.ComponentModel.DataAnnotations;
+using JobManagement.Application.Services;
 using JobManagement.Domain.Entities;
-using JobManagement.Domain.Enums;
-using JobManagement.Infrastructure.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
-using System.ComponentModel.DataAnnotations;
-using System.Security.Claims;
+using AutoMapper;
 using JobManagement.Application.Dtos;
 
 namespace JobManagement.API.Controllers;
@@ -17,10 +15,12 @@ namespace JobManagement.API.Controllers;
 public class UserController : ControllerBase
 {
     private readonly UserService _userService;
+    private readonly IMapper _mapper;
 
-    public UserController(UserService userService)
+    public UserController(UserService userService, IMapper mapper)
     {
         _userService = userService;
+        _mapper = mapper;
     }
 
     /// <summary>
@@ -31,23 +31,22 @@ public class UserController : ControllerBase
     /// <response code="200">Returns the user information</response>
     /// <response code="404">If the user is not found</response>
     [HttpGet("{id}")]
-    [Authorize(Roles = "Admin,Manager")]
+    //[Authorize(Roles = "Admin,Manager")]
     [ProducesResponseType(typeof(User), 200)]
     [ProducesResponseType(404)]
-    public async Task<ActionResult<User>> GetUser(int id)
+    public async Task<ActionResult<UserInfo>> GetUser(int id)
     {
         Log.Information("Getting user with ID: {UserId}", id);
-        
+
         var user = await _userService.GetUserByIdAsync(id);
         if (user == null)
         {
             Log.Warning("User with ID {UserId} not found", id);
-            return NotFound();
+            return NotFound(new { Message = $"User with ID {id} not found" });
         }
-        
-        user.PasswordHash = string.Empty;
-        Log.Information("Successfully retrieved user {UserId}: {UserEmail}", id, user.Email);
-        return Ok(user);
+
+        var userDto = _mapper.Map<UserInfo>(user);
+        return Ok(userDto);
     }
 
     /// <summary>
@@ -63,35 +62,17 @@ public class UserController : ControllerBase
     [ProducesResponseType(400)]
     public async Task<ActionResult<UserRegistrationResponse>> RegisterUser([FromBody] UserRegistrationRequest request)
     {
-        Log.Information("Registering new user with email: {Email}", request.Email);
-        
         try
         {
-            var user = new User
-            {
-                PersonalNumber = request.PersonalNumber,
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                Email = request.Email,
-                PhoneNumber = request.PhoneNumber,
-                Role = request.Role
-            };
+            var createdUser = await _userService.CreateUserAsync(request);
 
-            var createdUser = await _userService.CreateUserAsync(user, request.Password);
-            
             Log.Information("Successfully registered user {UserId} with email {Email}", createdUser.Id, request.Email);
-            
+
             return Ok(new UserRegistrationResponse
             {
                 UserId = createdUser.Id,
                 Message = "User created successfully",
-                IsPhoneNumberVerified = true
             });
-        }
-        catch (System.ComponentModel.DataAnnotations.ValidationException e)
-        {
-            Log.Warning("Validation error during user registration for email {Email}: {ErrorMessage}", request.Email, e.Message);
-            return BadRequest(new { Message = e.Message });
         }
         catch (Exception e)
         {
@@ -101,48 +82,62 @@ public class UserController : ControllerBase
     }
 
     /// <summary>
-    /// Authenticate user and get JWT token
+    /// Delete a user by ID
     /// </summary>
-    /// <param name="request">Login credentials</param>
-    /// <returns>Authentication result with JWT token</returns>
-    /// <response code="200">Login successful</response>
-    /// <response code="401">If credentials are invalid</response>
-    [HttpPost("login")]
-    [AllowAnonymous]
-    [ProducesResponseType(typeof(LoginResponse), 200)]
+    /// <param name="id">User ID</param>
+    /// <returns>Deletion result</returns>
+    /// <response code="200">User deleted successfully</response>
+    /// <response code="404">If the user is not found</response>
+    [HttpDelete("{id}")]
+    //[Authorize(Roles = "Admin")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(404)]
     [ProducesResponseType(401)]
-    public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
+    [ProducesResponseType(403)]
+    public async Task<ActionResult> DeleteUser(int id)
     {
-        Log.Information("Login attempt for email: {Email}", request.Email);
-        
-        try
+        Log.Information("Deleting user with ID: {UserId}", id);
+
+        var result = await _userService.DeleteUserAsync(id);
+        if (!result)
         {
-            var (isValid, user) = await _userService.ValidateUserCredentialsAsync(request.Email, request.Password);
-            if (!isValid || user == null)
-            {
-                Log.Warning("Failed login attempt for email: {Email}", request.Email);
-                return Unauthorized(new { Message = "Invalid credentials" });
-            }
-
-            var token = _userService.GenerateJwtToken(user);
-
-            Log.Information("Successful login for user {UserId} with email {Email}", user.Id, request.Email);
-
-            return Ok(new LoginResponse
-            {
-                UserId = user.Id,
-                Email = user.Email,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Role = user.Role,
-                Token = token,
-                Message = "Login successful"
-            });
+            Log.Warning("User with ID {UserId} not found for deletion", id);
+            return NotFound(new { Message = $"User with ID {id} not found" });
         }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error during login for email: {Email}", request.Email);
-            return BadRequest(new { Message = ex.Message });
-        }
+
+        Log.Information("Successfully deleted user with ID {UserId}", id);
+        return Ok(new { Message = $"User with ID {id} deleted successfully" });
+    }
+
+    /// <summary>
+    /// Get all users
+    /// </summary>
+    /// <returns>List of all users</returns>
+    [HttpGet]
+    //[Authorize(Roles = "Admin,Manager")]
+    [ProducesResponseType(typeof(IEnumerable<UserInfo>), 200)]
+    public async Task<ActionResult<IEnumerable<UserInfo>>> GetAllUsers()
+    {
+        Log.Information("Getting all users");
+
+        var users = await _userService.GetAllUsersAsync();
+        var userInfos = _mapper.Map<IEnumerable<UserInfo>>(users);
+
+        return Ok(userInfos);
+    }
+
+    [HttpGet("email")]
+    [ProducesResponseType(typeof(User), 200)]
+    [ProducesResponseType(404)]
+    public async Task<ActionResult<User>> GetUserByEmail(string email)
+    {
+        Log.Information("Getting user with email {EmailAddress}", email);
+
+        var user = await _userService.GetUserByEmailAsync(email);
+
+        if (user == null)
+            return NotFound();
+
+        return Ok(user);
     }
 }

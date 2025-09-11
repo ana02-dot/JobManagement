@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
+using JobManagement.Application.Dtos;
+using JobManagement.Domain.Enums;
 
 namespace JobManagement.API.Controllers;
 
@@ -19,15 +22,8 @@ public class JobsController : ControllerBase
         _jobService = jobService;
     }
 
-    /// <summary>
-    /// Get all jobs (requires Admin or Manager role)
-    /// </summary>
-    /// <returns>List of all jobs</returns>
-    /// <response code="200">Returns the list of all jobs</response>
-    /// <response code="401">If the user is not authenticated</response>
-    /// <response code="403">If the user does not have required role</response>
     [HttpGet]
-    [Authorize(Roles = "Admin,Manager")]
+    [Authorize(Roles = "Admin,HR")]
     [ProducesResponseType(typeof(List<Job>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
@@ -35,37 +31,23 @@ public class JobsController : ControllerBase
     {
         Log.Information("Getting all jobs");
         var jobs = await _jobService.GetAllJobsAsync();
-        Log.Information("Retrieved {JobCount} jobs", jobs.Count());
+        Log.Information("Retrieved {JobCount} jobs", jobs.Count);
         return Ok(jobs);
     }
 
-    /// <summary>
-    /// Get all active/published jobs (public endpoint)
-    /// </summary>
-    /// <returns>List of active jobs</returns>
-    /// <response code="200">Returns the list of active jobs</response>
-    [HttpGet("active")]
+    [HttpGet("status/{status}")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(List<Job>), 200)]
-    public async Task<ActionResult<List<Job>>> GetActiveJobs()
+    public async Task<ActionResult<List<Job>>> GetJobsByStatus(JobStatus status)
     {
-        Log.Information("Getting active jobs");
-        var jobs = await _jobService.GetActiveJobsAsync();
-        Log.Information("Retrieved {JobCount} active jobs", jobs.Count());
+        Log.Information("Getting jobs by status: {Status}", status);
+        var jobs = await _jobService.GetJobsByStatusAsync(status);
+        Log.Information("Retrieved {JobCount} jobs", jobs.Count);
         return Ok(jobs);
     }
 
-    /// <summary>
-    /// Get a specific job by ID
-    /// </summary>
-    /// <param name="id">Job ID</param>
-    /// <returns>Job information</returns>
-    /// <response code="200">Returns the job information</response>
-    /// <response code="404">If the job is not found</response>
-    /// <response code="401">If the user is not authenticated</response>
-    /// <response code="403">If the user does not have required role</response>
     [HttpGet("{id}")]
-    [Authorize(Roles = "Admin,Manager")]
+    [Authorize(Roles = "Admin,HR")]
     [ProducesResponseType(typeof(Job), 200)]
     [ProducesResponseType(404)]
     [ProducesResponseType(401)]
@@ -84,111 +66,40 @@ public class JobsController : ControllerBase
         return Ok(job);
     }
 
-    /// <summary>
-    /// Create a new job posting
-    /// </summary>
-    /// <param name="request">Job creation data</param>
-    /// <returns>Job creation result</returns>
-    /// <response code="200">Job created successfully</response>
-    /// <response code="400">If the request data is invalid</response>
-    /// <response code="401">If the user is not authenticated</response>
-    /// <response code="403">If the user does not have required role</response>
-    [HttpPost]
-    [Authorize(Roles = "Admin,Manager")]
-    [ProducesResponseType(typeof(JobCreationResponse), 200)]
+    /*[HttpPost]
+    [Authorize(Roles = "Admin,HR")]
+    [ProducesResponseType(typeof(int), 201)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
-    public async Task<ActionResult<JobCreationResponse>> CreateJob([FromBody] JobCreationRequest request)
+    public async Task<ActionResult<int>> CreateJob([FromBody] CreateJobCommand command)
     {
-        Log.Information("Creating new job with title: {JobTitle}", request.Title);
-        
         try
         {
-            var job = new Job
-            {
-                Title = request.Title,
-                Description = request.Description,
-                Requirements = request.Requirements,
-                SalaryMin = request.SalaryMin,
-                SalaryMax = request.SalaryMax,
-                Location = request.Location,
-                ApplicationDeadline = request.ApplicationDeadline,
-                MaxApplications = request.MaxApplications
-            };
-
-            var jobId = await _jobService.CreateJobAsync(job, request.CreatorId);
-
-            Log.Information("Successfully created job {JobId} with title {JobTitle}", jobId, request.Title);
-
-            return Ok(new JobCreationResponse
-            {
-                JobId = jobId,
-                Message = "Job created successfully"
-            });
+            return CreatedAtAction(nameof(GetJob), new { id = jobId }, jobId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log.Error(ex, "Invalid operation while creating job");
+            return BadRequest(new { Message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Log.Warning(ex, "Unauthorized access while creating job");
+            return Forbid();
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error creating job with title: {JobTitle}", request.Title);
-            return BadRequest(new { Message = ex.Message });
+            Log.Error(ex, "Unexpected error while creating job");
+            return StatusCode(500, new { Message = "An error occurred while creating the job" });
         }
-    }
+    }*/
 
-    /// <summary>
-    /// Publish a job to make it visible to applicants
-    /// </summary>
-    /// <param name="id">Job ID</param>
-    /// <param name="request">Publishing data</param>
-    /// <returns>Publishing result</returns>
-    /// <response code="200">Job published successfully</response>
-    /// <response code="400">If the request data is invalid</response>
-    /// <response code="404">If the job is not found</response>
-    /// <response code="401">If the user is not authenticated</response>
-    /// <response code="403">If the user does not have required role</response>
-    [HttpPut("{id}/publish")]
-    [Authorize(Roles = "Admin,Manager")]
-    [ProducesResponseType(200)]
-    [ProducesResponseType(400)]
-    [ProducesResponseType(404)]
-    [ProducesResponseType(401)]
-    [ProducesResponseType(403)]
-    public async Task<ActionResult> PublishJob(int id, [FromBody] PublishJobRequest request)
+    private int GetCurrentUserId()
     {
-        Log.Information("Publishing job {JobId} by publisher {PublisherId}", id, request.PublisherId);
-        
-        try
-        {
-            await _jobService.PublishJobAsync(id, request.PublisherId);
-            Log.Information("Successfully published job {JobId}", id);
-            return Ok(new { Message = "Job published successfully" });
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error publishing job {JobId}", id);
-            return BadRequest(new { Message = ex.Message });
-        }
-    }
-    public class JobCreationRequest
-    {
-        public string Title { get; set; } = string.Empty; 
-        public string Description { get; set; } = string.Empty;
-        public string Requirements { get; set; } = string.Empty;
-        public decimal? SalaryMin { get; set; }
-        public decimal? SalaryMax { get; set; }
-        public string Location { get; set; } = string.Empty;
-        public DateTime ApplicationDeadline { get; set; }
-        public int CreatorId { get; set; }
-        public int? MaxApplications { get; set; }
-    }
-    
-    public class JobCreationResponse
-    {
-        public int JobId { get; set; }
-        public string Message { get; set; } = string.Empty;
-    }
-    
-    public class PublishJobRequest
-    {
-        public int PublisherId { get; set; }
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            throw new InvalidOperationException("User ID not found in token claims");
+        return userId;
     }
 }
