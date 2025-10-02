@@ -2,7 +2,6 @@
 using JobManagement.Application.Dtos;
 using JobManagement.Application.Services;
 using JobManagement.Domain.Entities;
-using JobManagement.Infrastructure.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
