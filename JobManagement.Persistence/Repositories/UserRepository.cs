@@ -26,6 +26,7 @@ public class UserRepository : IUserRepository
         return await _context.Users
             .Where(u => u.IsDeleted == 0)  
             .FirstOrDefaultAsync(u => u.Email == email);
+        
     }
 
     public async Task<User?> GetByPersonalNumberAsync(string personalNumber)

@@ -31,33 +31,21 @@ public class JobApplicationController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(ApplicationSubmissionResponse), 200)]
     [ProducesResponseType(400)]
-    public async Task<ActionResult<ApplicationSubmissionResponse>> SubmitApplication([FromBody] ApplicationSubmissionRequest request) 
+    public async Task<ActionResult<ApplicationSubmissionResponse>> SubmitApplication([FromBody] ApplicationSubmissionRequest request)
     {
         Log.Information("Submitting application for job {JobId} by applicant {ApplicantId}", request.JobId, request.ApplicantId);
-
-        try
+        var application = new Applications
         {
-            var application = new Applications
-            {
-                JobId = request.JobId,
-                Resume = request.Resume ?? string.Empty
-            };
-
-            var applicationId = await _jobApplicationService.SubmitApplicationAsync(application, request.ApplicantId);
-            
-            Log.Information("Successfully submitted application {ApplicationId} for job {JobId}", applicationId, request.JobId);
-
-            return Ok(new ApplicationSubmissionResponse
-            {
-                ApplicationId = applicationId,
-                Message = "Application submitted successfully"
-            });
-        }
-        catch (Exception ex)
+            JobId = request.JobId,
+            Resume = request.Resume ?? string.Empty
+        };
+        var applicationId = await _jobApplicationService.SubmitApplicationAsync(application, request.ApplicantId);
+        Log.Information("Successfully submitted application {ApplicationId} for job {JobId}", applicationId, request.JobId);
+        return Ok(new ApplicationSubmissionResponse
         {
-            Log.Error(ex, "Error submitting application for job {JobId} by applicant {ApplicantId}", request.JobId, request.ApplicantId);
-            return BadRequest(new { Message = ex.Message });
-        }
+            ApplicationId = applicationId,
+            Message = "Application submitted successfully"
+        });
     }
 
         /// <summary>

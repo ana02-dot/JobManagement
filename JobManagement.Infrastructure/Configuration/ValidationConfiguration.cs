@@ -11,13 +11,10 @@ public static class ValidationConfiguration
 {
     public static IServiceCollection AddValidationConfiguration(this IServiceCollection services)
     {
-        // Ensure FluentValidation auto-validation runs before controller actions
         services.AddFluentValidationAutoValidation();
 
-        // Register validators from the Application layer (ensure CreateJobRequestValidator exists there)
         services.AddValidatorsFromAssemblyContaining<CreateJobRequestValidator>();
 
-        // Configure a consistent RFC-7807 style response for validation failures
         services.Configure<ApiBehaviorOptions>(options =>
         {
             options.InvalidModelStateResponseFactory = context =>

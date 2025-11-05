@@ -28,36 +28,28 @@ public class AuthController : ControllerBase
     {
         Log.Information("Login attempt for email: {Email}", request.Email);
         
-        try
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
         {
-            if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
-            {
-                Log.Warning("Login attempt with missing email or password");
-                return BadRequest(new { message = "Email and password are required" });
-            }
+            Log.Warning("Login attempt with missing email or password");
+            return BadRequest(new { message = "Email and password are required" });
+        }
 
-            var user = await _userService.ValidateUserCredentialsAsync(request.Email, request.Password);
+        var user = await _userService.ValidateUserCredentialsAsync(request.Email, request.Password);
         
-            if (user == null)
-            {
-                Log.Warning("Failed login attempt for email: {Email}", request.Email);
-                return Unauthorized(new { message = "Invalid email or password" });
-            }
-
-            var token = _jwtService.GenerateToken(user);
-            
-            Log.Information("Successful login for email: {Email}", request.Email);
-            return Ok(new LoginResponse
-            {
-                Email = user.Email,
-                Token = token,
-                Message = "Login successful"
-            });
-        }
-        catch (Exception ex)
+        if (user == null)
         {
-            Log.Error(ex, "Error during login for email: {Email}", request.Email);
-            return StatusCode(500, new { Message = "An error occurred during login" });
+            Log.Warning("Failed login attempt for email: {Email}", request.Email);
+            return Unauthorized(new { message = "Invalid email or password" });
         }
+
+        var token = _jwtService.GenerateToken(user);
+        
+        Log.Information("Successful login for email: {Email}", request.Email);
+        return Ok(new LoginResponse
+        {
+            Email = user.Email,
+            Token = token,
+            Message = "Login successful"
+        });
     }
 }

@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using JobManagement.Application.Services;
+﻿using JobManagement.Application.Services;
 using JobManagement.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -62,23 +61,13 @@ public class UserController : ControllerBase
     [ProducesResponseType(400)]
     public async Task<ActionResult<UserRegistrationResponse>> RegisterUser([FromBody] UserRegistrationRequest request)
     {
-        try
+        var createdUser = await _userService.CreateUserAsync(request);
+        Log.Information("Successfully registered user {UserId} with email {Email}", createdUser.Id, request.Email);
+        return Ok(new UserRegistrationResponse
         {
-            var createdUser = await _userService.CreateUserAsync(request);
-
-            Log.Information("Successfully registered user {UserId} with email {Email}", createdUser.Id, request.Email);
-
-            return Ok(new UserRegistrationResponse
-            {
-                UserId = createdUser.Id,
-                Message = "User created successfully",
-            });
-        }
-        catch (Exception e)
-        {
-            Log.Error(e, "Unexpected error during user registration for email {Email}", request.Email);
-            return StatusCode(500, new { Message = "An unexpected error occurred" });
-        }
+            UserId = createdUser.Id,
+            Message = "User created successfully",
+        });
     }
 
     /// <summary>

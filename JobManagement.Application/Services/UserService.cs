@@ -50,14 +50,13 @@ public class UserService
             throw new ValidationException("Phone number already exists");
         }
 
-        // Map from DTO to Entity
         var user = _mapper.Map<User>(request);
         
         // Hash password and set timestamps
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
         user.CreatedAt = DateTime.UtcNow;
         user.UpdatedAt = DateTime.UtcNow;
-        user.CreatedBy = null; // Set to null for self-registration
+        user.CreatedBy = null;
 
         var createdUser = await _userRepository.CreateAsync(user);
         return createdUser;
