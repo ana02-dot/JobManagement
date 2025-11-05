@@ -41,36 +41,9 @@ Clone the Repository:
 -- git clone https://github.com/ana02-dot/JobManagement.git
 cd JobManagement
 
-# Configure Your Database:
-
-Open appsettings.json (or appsettings.Development.json for local development).
-
-Update the ConnectionStrings section with your SQL Server connection string.
-
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=YourServerName;Database=JobManagementDb;User Id=YourUserId;Password=YourPassword;"
-  },
-  // ... other settings
-}
-
-
-# Apply Database Migrations:
-
-dotnet ef database update
-
-
 # Run the API:
 
 -- dotnet run
 
-The API should now be operational, typically accessible at https://localhost:7045 (the exact port will be displayed in your terminal output).
-
 # Exploring the API with Swagger
 Once the API is running, you can access the interactive Swagger UI in your web browser. This interface provides a complete overview of all available API endpoints, including their expected inputs and example responses, allowing for direct testing.
-
-Open your browser and navigate to:
-https://localhost:7045/swagger/index.html (adjust the port if necessary)
-This project is licensed under the MIT License. Refer to the LICENSE file for comprehensive details.
-
-Should you have any questions or require assistance, please feel free to open an issue in the GitHub repository. I'll do my best to help!
