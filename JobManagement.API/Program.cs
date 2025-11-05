@@ -9,9 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
-using FluentValidation.AspNetCore;
 using JobManagement.Application.Profiles;
-using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,9 +53,7 @@ builder.Services.AddAuthentication(options =>
 
 // Database
         builder.Services.AddDbContext<JobManagementDbContext>(options =>
-            options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
-            sqlOptions => sqlOptions.MigrationsAssembly("JobManagement.Persistence")
-            ));
+            options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 
 // CORS
