@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
+using JobManagement.Application.Middlewares;
 using JobManagement.Application.Profiles;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -84,6 +85,7 @@ var app = builder.Build();
 app.UseSwaggerConfiguration();
 app.UseCors("AllowAll");
 app.UseHttpsRedirection();
+app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
