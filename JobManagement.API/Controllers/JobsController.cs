@@ -29,7 +29,7 @@ public class JobsController : ControllerBase
     [ProducesResponseType(403)]
     public async Task<ActionResult<List<Job>>> GetAllJobs()
     {
-        Log.Information("Getting all jobs");
+        Log.Information("Getting all jobs. User claims: {Claims}", string.Join(", ", User.Claims.Select(c => $"{c.Type}:{c.Value}")));
         var jobs = await _jobService.GetAllJobsAsync();
         Log.Information("Retrieved {JobCount} jobs", jobs.Count);
         return Ok(jobs);
@@ -54,46 +54,29 @@ public class JobsController : ControllerBase
     [ProducesResponseType(403)]
     public async Task<ActionResult<Job>> GetJob(int id)
     {
-        Log.Information("Getting job with ID: {JobId}", id);
+        Log.Information("Getting job with ID: {JobId}. User claims: {Claims}", id, string.Join(", ", User.Claims.Select(c => $"{c.Type}:{c.Value}")));
         var job = await _jobService.GetJobByIdAsync(id);
         if (job == null)
         {
             Log.Warning("Job with ID {JobId} not found", id);
             return NotFound();
         }
-
         Log.Information("Successfully retrieved job {JobId}: {JobTitle}", id, job.Title);
         return Ok(job);
     }
 
-    /*[HttpPost]
+    [HttpPost]
     [Authorize(Roles = "Admin,HR")]
     [ProducesResponseType(typeof(int), 201)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
-    public async Task<ActionResult<int>> CreateJob([FromBody] CreateJobCommand command)
+    public async Task<ActionResult<int>> CreateJob([FromBody] CreateJobRequest request)
     {
-        try
-        {
-            return CreatedAtAction(nameof(GetJob), new { id = jobId }, jobId);
-        }
-        catch (InvalidOperationException ex)
-        {
-            Log.Error(ex, "Invalid operation while creating job");
-            return BadRequest(new { Message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            Log.Warning(ex, "Unauthorized access while creating job");
-            return Forbid();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Unexpected error while creating job");
-            return StatusCode(500, new { Message = "An error occurred while creating the job" });
-        }
-    }*/
+        var userId = GetCurrentUserId();
+        var createdJob = await _jobService.CreateJobAsync(request, userId);
+        return CreatedAtAction(nameof(GetJob), new { id = createdJob.Id }, createdJob.Id);
+    }
 
     private int GetCurrentUserId()
     {
