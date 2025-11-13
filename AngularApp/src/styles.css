@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Minimal helpers if DaisyUI fails to load */
+.btn { @apply inline-flex items-center justify-center px-4 py-2 rounded border border-slate-300 text-slate-800 bg-white hover:bg-slate-50; }
+.btn-primary { @apply bg-blue-600 text-white border-blue-600 hover:bg-blue-700; }
+.btn-outline { @apply bg-transparent text-slate-900 border-slate-400 hover:bg-slate-50; }
+.container { @apply mx-auto; }
